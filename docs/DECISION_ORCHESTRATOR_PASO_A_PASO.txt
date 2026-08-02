@@ -1,0 +1,347 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║               CÓMO EL ORCHESTRATOR DECIDE Y EJECUTA AGENTES                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+ESCENARIO 1: Usuario quiere EJECUTAR PRUEBAS
+══════════════════════════════════════════════════════════════════════════════
+
+┌─ ENTRADA ──────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  UserRequest {                                                             │
+│    requestType: "test-execution"  ← CLAVE PARA LA DECISIÓN                │
+│    browser: "chrome"                                                       │
+│    environment: "staging"                                                  │
+│    parameters: {profile: "smoke"}                                          │
+│  }                                                                         │
+│                                                                             │
+└────────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─ ORQUESTRADOR RECIBE ──────────────────────────────────────────────────────┐
+│                                                                             │
+│  OrchestratorAgent.execute(request)                                        │
+│                                                                             │
+│  "Tengo una solicitud... déjame analizar..."                               │
+│                                                                             │
+└────────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─ ANÁLISIS: ¿QUÉ TIPO ES? ──────────────────────────────────────────────────┐
+│                                                                             │
+│  String tipoSolicitud = request.getRequestType();                          │
+│                                                                             │
+│  System.out.println("📥 Solicitud recibida: " + tipoSolicitud);           │
+│  // OUTPUT: 📥 Solicitud recibida: test-execution                          │
+│                                                                             │
+│  "Es un test-execution... necesito el agente especializado"                │
+│                                                                             │
+└────────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─ BÚSQUEDA: ¿QUIÉN PUEDE MANEJAR ESTO? ────────────────────────────────────┐
+│                                                                             │
+│  List<Agent> agentes = [                                                   │
+│    TestExecutionHandler,                                                   │
+│    TestPlanningAgent,                                                      │
+│    TestDesignerAgent,                                                      │
+│    JiraTaskAgent,                                                          │
+│    GitHubActionsAgent                                                      │
+│  ]                                                                         │
+│                                                                             │
+│  PREGUNTA A CADA UNO:                                                      │
+│  ─────────────────────────────────────────────────────────────────         │
+│                                                                             │
+│  ❌ TestPlanningAgent.canHandle("test-execution") ?                        │
+│     → "planning".equals("test-execution") ? FALSE                          │
+│     → "No, yo manejo 'planning'"                                           │
+│                                                                             │
+│  ❌ TestDesignerAgent.canHandle("test-execution") ?                        │
+│     → "design".equals("test-execution") ? FALSE                            │
+│     → "No, yo manejo 'design'"                                             │
+│                                                                             │
+│  ✅ TestExecutionHandler.canHandle("test-execution") ?                     │
+│     → "test-execution".equals("test-execution") ? TRUE                     │
+│     → "¡SÍ! Yo puedo manejar esto!"                                       │
+│     → SELECCIONADO ✓                                                       │
+│                                                                             │
+│  ❌ JiraTaskAgent.canHandle("test-execution") ?                            │
+│     → (No se pregunta, ya encontramos uno)                                │
+│                                                                             │
+│  ❌ GitHubActionsAgent.canHandle("test-execution") ?                       │
+│     → (No se pregunta, ya encontramos uno)                                │
+│                                                                             │
+└────────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─ EJECUCIÓN: DELEGAMOS AL AGENTE ──────────────────────────────────────────┐
+│                                                                             │
+│  Agent selectedAgent = TestExecutionHandler;                               │
+│                                                                             │
+│  System.out.println("🔀 Enrutando a: " + selectedAgent.getName());        │
+│  // OUTPUT: 🔀 Enrutando a: TestExecutionHandler                           │
+│                                                                             │
+│  System.out.println("📝 Descripción: " + selectedAgent.getDescription()); │
+│  // OUTPUT: 📝 Descripción: Ejecuta suite de pruebas con Maven              │
+│                                                                             │
+│  CompletableFuture<Map<String, Object>> resultado =                        │
+│    selectedAgent.execute(request);                                         │
+│                                                                             │
+│  // TestExecutionHandler ejecuta en paralelo (CompletableFuture)           │
+│  // El main() no se bloquea                                                │
+│                                                                             │
+└────────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─ AGENTE EJECUTA ───────────────────────────────────────────────────────────┐
+│                                                                             │
+│  TestExecutionHandler.execute(request) {                                   │
+│                                                                             │
+│    1. Extrae parámetros:                                                   │
+│       - profile = "smoke"                                                  │
+│       - browser = "chrome"                                                 │
+│       - environment = "staging"                                            │
+│                                                                             │
+│    2. Construye comando Maven:                                             │
+│       String cmd = "mvn clean test -Dprofile=smoke -Dbrowser=chrome..."   │
+│                                                                             │
+│    3. Ejecuta (simula):                                                    │
+│       runtime.exec(cmd)                                                    │
+│       Thread.sleep(2000)  // Simula tiempo de ejecución                    │
+│                                                                             │
+│    4. Procesa resultados:                                                  │
+│       Map<String, Object> resultado = new HashMap<>();                     │
+│       resultado.put("executionId", "uuid-456");                            │
+│       resultado.put("status", "SUCCESS");                                  │
+│       resultado.put("totalTests", 45);                                     │
+│       resultado.put("passedTests", 43);                                    │
+│       resultado.put("failedTests", 2);                                     │
+│       resultado.put("reportPath", "/reports/automation-uuid-456.html");   │
+│                                                                             │
+│    5. Retorna resultado:                                                   │
+│       return resultado;                                                    │
+│                                                                             │
+│  }                                                                         │
+│                                                                             │
+└────────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─ ORQUESTRADOR CONSOLIDA ───────────────────────────────────────────────────┐
+│                                                                             │
+│  Map<String, Object> agentResult = resultado.get();                        │
+│                                                                             │
+│  Map<String, Object> respuestaFinal = new HashMap<>();                     │
+│  respuestaFinal.put("orchestratorStatus", "SUCCESS");                      │
+│  respuestaFinal.put("selectedAgent", "TestExecutionHandler");              │
+│  respuestaFinal.put("agentResult", agentResult);                           │
+│                                                                             │
+│  return respuestaFinal;                                                    │
+│                                                                             │
+└────────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─ SALIDA ───────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  {                                                                         │
+│    "orchestratorStatus": "SUCCESS",                                        │
+│    "selectedAgent": "TestExecutionHandler",                                │
+│    "agentResult": {                                                        │
+│      "executionId": "uuid-456",                                            │
+│      "status": "SUCCESS",                                                  │
+│      "profile": "smoke",                                                   │
+│      "browser": "chrome",                                                  │
+│      "environment": "staging",                                             │
+│      "totalTests": 45,                                                     │
+│      "passedTests": 43,                                                    │
+│      "failedTests": 2,                                                     │
+│      "reportPath": "/reports/automation-uuid-456.html"                     │
+│    }                                                                       │
+│  }                                                                         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+ESCENARIO 2: Usuario quiere PLANIFICAR PRUEBAS
+══════════════════════════════════════════════════════════════════════════════
+
+┌─ ENTRADA ──────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  UserRequest {                                                             │
+│    requestType: "planning"  ← ¡TIPO DIFERENTE!                           │
+│    parameters: {                                                           │
+│      testObjective: "Verificar flujo de login",                            │
+│      features: ["login", "logout", "password-reset"]                       │
+│    }                                                                       │
+│  }                                                                         │
+│                                                                             │
+└────────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─ ORQUESTRADOR: ANÁLISIS ───────────────────────────────────────────────────┐
+│                                                                             │
+│  String tipoSolicitud = request.getRequestType();                          │
+│  // OUTPUT: "planning"                                                     │
+│                                                                             │
+│  "Es un planning... busco el agente especializado"                         │
+│                                                                             │
+└────────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─ BÚSQUEDA: ¿QUIÉN MANEJA "planning"? ──────────────────────────────────────┐
+│                                                                             │
+│  ❌ TestExecutionHandler.canHandle("planning") ?                           │
+│     → "test-execution".equals("planning") ? FALSE                          │
+│                                                                             │
+│  ✅ TestPlanningAgent.canHandle("planning") ?                              │
+│     → "planning".equals("planning") ? TRUE                                 │
+│     → SELECCIONADO ✓                                                       │
+│                                                                             │
+│  (Resto no se pregunta)                                                    │
+│                                                                             │
+└────────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─ DELEGACIÓN A AGENTE DIFERENTE ────────────────────────────────────────────┐
+│                                                                             │
+│  System.out.println("🔀 Enrutando a: TestPlanningAgent");                 │
+│                                                                             │
+│  CompletableFuture<Map<String, Object>> resultado =                        │
+│    TestPlanningAgent.execute(request);                                     │
+│                                                                             │
+│  TestPlanningAgent ejecuta COMPLETAMENTE DIFERENTE que TestExecutionHandler│
+│                                                                             │
+│  TestPlanningAgent.execute(request) {                                      │
+│    // No ejecuta Maven                                                     │
+│    // No necesita navegador                                                │
+│    // Genera plan de pruebas                                               │
+│                                                                             │
+│    Map<String, Object> planDePruebas = new HashMap<>();                    │
+│    planDePruebas.put("planId", "TP-789");                                  │
+│    planDePruebas.put("testCases", generarCasosDePrueba(features));        │
+│    planDePruebas.put("estimatedDuration", "2-3 horas");                   │
+│    ...                                                                     │
+│    return planDePruebas;                                                   │
+│  }                                                                         │
+│                                                                             │
+└────────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─ SALIDA (COMPLETAMENTE DIFERENTE) ─────────────────────────────────────────┐
+│                                                                             │
+│  {                                                                         │
+│    "orchestratorStatus": "SUCCESS",                                        │
+│    "selectedAgent": "TestPlanningAgent",                                   │
+│    "agentResult": {                                                        │
+│      "planId": "TP-789",                                                   │
+│      "testCases": [                                                        │
+│        {id: "TC-login-1", feature: "login", scenario: "..."},             │
+│        {id: "TC-login-2", feature: "login", scenario: "..."},             │
+│        ...                                                                 │
+│      ],                                                                    │
+│      "estimatedDuration": "2-3 horas",                                     │
+│      "testCasesCount": 9                                                   │
+│    }                                                                       │
+│  }                                                                         │
+│                                                                             │
+│  ✅ NOTA: El usuario IGUAL forma de usar (orchestrator.processRequest)     │
+│     pero recibe COMPLETAMENTE diferente resultado                          │
+│     porque el agente es diferente                                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+🎯 TABLA DE DECISIONES DEL ORCHESTRATOR
+═══════════════════════════════════════════════════════════════════════════════
+
+┌──────────────────┬──────────────────────┬───────────────────────────────────┐
+│ requestType      │ Agente Seleccionado  │ ¿Qué ejecuta?                     │
+├──────────────────┼──────────────────────┼───────────────────────────────────┤
+│ test-execution   │ TestExecutionHandler │ Maven + navegador + ambiente      │
+│ planning         │ TestPlanningAgent    │ Genera plan de pruebas            │
+│ design           │ TestDesignerAgent    │ Features, datos, localizadores    │
+│ jira             │ JiraTaskAgent        │ Lee/publica en Jira               │
+│ github           │ GitHubActionsAgent   │ Pipelines, PR, workflows          │
+│ ??? (nuevo)      │ Crear nuevo agente   │ Cualquier funcionalidad           │
+└──────────────────┴──────────────────────┴───────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+💡 PATRÓN: STRATEGY PATTERN + ROUTER PATTERN
+═══════════════════════════════════════════════════════════════════════════════
+
+El OrchestratorAgent implementa dos patrones de diseño:
+
+1. STRATEGY PATTERN:
+   Cada agente es una "estrategia" diferente de ejecución
+   OrchestratorAgent elige la estrategia según el requestType
+
+2. ROUTER PATTERN:
+   OrchestratorAgent actúa como un "router" que dirige solicitudes
+   a diferentes "handlers" basado en el tipo de solicitud
+
+
+═══════════════════════════════════════════════════════════════════════════════
+✅ BENEFICIO CLAVE: EXTENSIBILIDAD
+═══════════════════════════════════════════════════════════════════════════════
+
+¿Quieres agregar nueva funcionalidad?
+
+TRADICIONAL:
+  1. Modificar main()
+  2. Escribir lógica directa
+  3. Riesgo de romper existente
+  4. Código acoplado
+
+CON AGENTES:
+  1. Crear nuevo agente que extienda Agent
+  2. Implementar execute() y canHandle()
+  3. Agregarlo a la lista de agentes
+  4. ¡LISTO! (sin tocar código existente)
+
+EJEMPLO:
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ // 1. Crear nuevo agente                                                    │
+│ public class SlackNotificationAgent implements Agent {                       │
+│                                                                              │
+│   @Override                                                                 │
+│   public CompletableFuture<Map<String, Object>> execute(UserRequest req) {  │
+│     // Enviar notificación a Slack                                          │
+│   }                                                                         │
+│                                                                              │
+│   @Override                                                                 │
+│   public boolean canHandle(UserRequest request) {                           │
+│     return "slack".equalsIgnoreCase(request.getRequestType());             │
+│   }                                                                         │
+│ }                                                                           │
+│                                                                              │
+│ // 2. Agregarlo al orquestrador                                             │
+│ agents.add(new SlackNotificationAgent());                                   │
+│                                                                              │
+│ // 3. ¡YA FUNCIONA!                                                         │
+│ UserRequest slackReq = new UserRequest();                                   │
+│ slackReq.setRequestType("slack");                                           │
+│ orchestrator.processRequest(slackReq);  // ← Automáticamente lo usa        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+🔑 RESUMEN: CÓMO FUNCIONA LA ORQUESTACIÓN
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Usuario envía UserRequest con requestType
+2. OrchestratorAgent recibe solicitud
+3. OrchestratorAgent analiza: request.getRequestType()
+4. OrchestratorAgent busca: ¿Quién puede manejar este tipo?
+5. Cada agente responde canHandle(): true/false
+6. OrchestratorAgent selecciona el agente que retornó TRUE
+7. OrchestratorAgent ejecuta: agent.execute(request)
+8. El agente hace su trabajo especializado
+9. Agente retorna resultado
+10. OrchestratorAgent consolida resultado
+11. Usuario recibe respuesta
+
+TODO AUTOMÁTICO. Usuario NO sabe qué agente se ejecuta.
+Usuario solo dice QUÉ QUIERE, no HOW hacerlo.
+
+═══════════════════════════════════════════════════════════════════════════════

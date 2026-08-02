@@ -1,0 +1,210 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    FLUJO DE ORQUESTACIÓN DE AGENTES                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         USUARIO ENVÍA SOLICITUD                              │
+│                                                                              │
+│   UserRequest {                                                             │
+│     type: "test-execution|planning|design|jira|github"                     │
+│     parameters: Map<String, Object>                                         │
+│     browser: "chrome|firefox|edge"                                          │
+│     environment: "dev|staging|prod"                                         │
+│   }                                                                          │
+└────────────────────────────────────┬─────────────────────────────────────────┘
+                                     │
+                                     ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                   ⚙️  ORCHESTRATOR AGENT (Router Central)                    │
+│                                                                              │
+│  • Recibe solicitud del usuario                                             │
+│  • Analiza requestType                                                      │
+│  • Busca agente competente                                                  │
+│  • Enruta la solicitud                                                      │
+└────────────────────────────────┬─────────────────────────────────────────────┘
+                                 │
+                ┌────────────────┼────────────────┬────────────────┐
+                ▼                ▼                ▼                ▼
+      ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
+      │ test-execution   │ │ planning         │ │ design           │
+      ├──────────────────┤ ├──────────────────┤ ├──────────────────┤
+      │ TestExecution    │ │ TestPlanning     │ │ TestDesigner     │
+      │ Handler          │ │ Agent            │ │ Agent            │
+      │                  │ │                  │ │                  │
+      │ • Ejecuta Maven  │ │ • Analiza reqts  │ │ • Genera features│
+      │ • Selecciona     │ │ • Crea plan      │ │ • Propone datos  │
+      │   browser/env    │ │ • Define casos   │ │ • Sugiere xpath  │
+      │ • Recupera       │ │                  │ │                  │
+      │   resultados     │ │                  │ │                  │
+      └────────┬─────────┘ └────────┬─────────┘ └────────┬─────────┘
+               │                    │                    │
+               └────────────────────┼────────────────────┘
+                                    │
+                ┌───────────────────┼───────────────────┐
+                ▼                   ▼                   ▼
+      ┌──────────────────┐ ┌──────────────────┐
+      │ jira             │ │ github           │
+      ├──────────────────┤ ├──────────────────┤
+      │ JiraTask         │ │ GitHubActions    │
+      │ Agent            │ │ Agent            │
+      │                  │ │                  │
+      │ • Lee tareas     │ │ • Dispara        │
+      │ • Publica        │ │   pipelines      │
+      │   resultados     │ │ • Consulta status│
+      │ • Adjunta        │ │ • Gestiona PR    │
+      │   evidencia      │ │                  │
+      └────────┬─────────┘ └────────┬─────────┘
+               │                    │
+               └────────────────────┘
+                        │
+                        ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                      RESULTADO CONSOLIDADO                                   │
+│                                                                              │
+│   Map<String, Object> {                                                     │
+│     orchestratorStatus: "SUCCESS|FAILED"                                    │
+│     selectedAgent: "AgentName"                                              │
+│     agentResult: { ... datos del agente ... }                               │
+│   }                                                                          │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                                       ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                      USUARIO RECIBE RESPUESTA                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           DETALLES POR AGENTE                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 1. TestExecutionHandler                                                     ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ Request Type: test-execution                                                ┃
+┃                                                                             ┃
+┃ INPUT:                                   OUTPUT:                           ┃
+┃ {                                        {                                 ┃
+┃   profile: "smoke"                         executionId: "uuid"             ┃
+┃   browser: "chrome"                        status: "SUCCESS"               ┃
+┃   environment: "staging"                   profile: "smoke"                ┃
+┃ }                                          browser: "chrome"               ┃
+┃                                            environment: "staging"          ┃
+┃ PROCESO:                                   totalTests: 45                  ┃
+┃ 1. Valida parámetros                       passedTests: 43                 ┃
+┃ 2. Construye comando Maven                 failedTests: 2                  ┃
+┃ 3. Ejecuta: mvn test -Dprofile=smoke...    reportPath: "/reports/..."      ┃
+┃ 4. Recupera resultados                   }                                 ┃
+┃ 5. Genera reporte                                                           ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 2. TestPlanningAgent                                                        ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ Request Type: planning                                                      ┃
+┃                                                                             ┃
+┃ INPUT:                                   OUTPUT:                           ┃
+┃ {                                        {                                 ┃
+┃   testObjective: "Verificar login"         planId: "TP-123456789"          ┃
+┃   features: ["login", "logout", ...]       objective: "Verificar login"    ┃
+┃ }                                          testCases: [                    ┃
+┃                                              {id, feature, scenario}       ┃
+┃ PROCESO:                                    ...                            ┃
+┃ 1. Analiza objetivo de prueba              ]                               ┃
+┃ 2. Por cada feature, genera 3 escenarios    testCasesCount: 9              ┃
+┃ 3. Define prioridades                       estimatedDuration: "2-3h"      ┃
+┃ 4. Calcula tiempo estimado                }                                 ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 3. TestDesignerAgent                                                        ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ Request Type: design                                                        ┃
+┃                                                                             ┃
+┃ INPUT:                                   OUTPUT:                           ┃
+┃ {                                        {                                 ┃
+┃   module: "login"                          features: ["@login", ...]      ┃
+┃ }                                          testData: {                     ┃
+┃                                              users: [...],                 ┃
+┃ PROCESO:                                    passwords: [...],              ┃
+┃ 1. Propone features BDD                     products: [...]                ┃
+┃ 2. Define datos de prueba                 }                                ┃
+┃ 3. Sugiere localizadores                   locators: {                     ┃
+┃ 4. Mapea elementos UI                        loginBtn: "xpath://...",      ┃
+┃ 5. Crea escenarios                          ...                            ┃
+┃                                            }                               ┃
+┃                                          }                                 ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 4. JiraTaskAgent                                                            ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ Request Type: jira                                                          ┃
+┃                                                                             ┃
+┃ INPUT (Read):                             OUTPUT:                           ┃
+┃ {                                         {                                ┃
+┃   action: "read"                            task: {                        ┃
+┃   taskId: "PROJ-123"                          id, title, description,       ┃
+┃ }                                             acceptanceCriteria: [...]      ┃
+┃                                            }                                ┃
+┃ INPUT (Publish):                          }                                ┃
+┃ {                                                                          ┃
+┃   action: "publish"                       PROCESO:                         ┃
+┃   taskId: "PROJ-123"                      1. Conexión a Jira API          ┃
+┃   executionId: "exec-456"                 2. Lectura de tarea              ┃
+┃   testStatus: "PASS"                      3. Extrae criteria               ┃
+┃ }                                         4. Publica resultados            ┃
+┃                                           5. Adjunta evidencia             ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 5. GitHubActionsAgent                                                       ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ Request Type: github                                                        ┃
+┃                                                                             ┃
+┃ ACTIONS:                                                                    ┃
+┃                                                                             ┃
+┃ 1. trigger-pipeline                                                        ┃
+┃    INPUT: {workflow: "test.yml", branch: "main"}                           ┃
+┃    OUTPUT: {pipelineId, status: "TRIGGERED"}                               ┃
+┃                                                                             ┃
+┃ 2. check-status                                                            ┃
+┃    INPUT: {pipelineId: "123"}                                              ┃
+┃    OUTPUT: {status: "RUNNING", progress: "75%", jobs: [...]}               ┃
+┃                                                                             ┃
+┃ 3. manage-pr                                                               ┃
+┃    INPUT: {prNumber: "42", prAction: "approve"}                            ┃
+┃    OUTPUT: {status: "SUCCESS"}                                             ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        INTERCONEXIONES DE AGENTES                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Típicamente, los agentes se usan en este orden:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ FLUJO 1: CICLO COMPLETO DE PRUEBAS                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. TestPlanningAgent    → Genera plan de pruebas                            │
+│ 2. TestDesignerAgent    → Diseña escenarios y datos                         │
+│ 3. TestExecutionHandler → Ejecuta las pruebas                               │
+│ 4. JiraTaskAgent        → Publica resultados en Jira                        │
+│ 5. GitHubActionsAgent   → Dispara pipeline con resultados                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ FLUJO 2: EJECUCIÓN RÁPIDA                                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. TestExecutionHandler → Ejecuta pruebas                                   │
+│ 2. JiraTaskAgent        → Publica resultados                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ FLUJO 3: PLANIFICACIÓN Y DISEÑO                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. TestPlanningAgent    → Genera plan                                       │
+│ 2. TestDesignerAgent    → Diseña escenarios                                 │
+│ 3. GitHubActionsAgent   → Crea PR con escenarios                            │
+└─────────────────────────────────────────────────────────────────────────────┘

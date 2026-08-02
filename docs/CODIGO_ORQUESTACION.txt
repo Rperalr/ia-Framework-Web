@@ -1,0 +1,325 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║           CÓDIGO ESPECÍFICO: CÓMO FUNCIONA LA ORQUESTACIÓN                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════════
+🔍 PARTE 1: EL ORCHESTRATOR AGENT (La Inteligencia)
+═══════════════════════════════════════════════════════════════════════════════
+
+Archivo: OrchestratorAgent.java
+Línea clave: execute(UserRequest request)
+
+┌─ MÉTODO EXECUTE (LA MAGIA OCURRE AQUÍ) ────────────────────────────────────┐
+│                                                                             │
+│ @Override                                                                  │
+│ public CompletableFuture<Map<String, Object>> execute(UserRequest request) │
+│ {                                                                          │
+│     logger.info("🎯 OrchestratorAgent - Procesando solicitud: {}",         │
+│         request.getRequestType());  ← ANÁLIZA TIPO                         │
+│                                                                             │
+│     return CompletableFuture.supplyAsync(() -> {                           │
+│         Map<String, Object> result = new HashMap<>();                      │
+│                                                                             │
+│         try {                                                              │
+│             // 🔑 PASO 1: BUSCAR AGENTE COMPETENTE                         │
+│             Agent selectedAgent = availableAgents.stream()                 │
+│                 .filter(agent -> agent.canHandle(request)) ← PREGUNTA     │
+│                 .findFirst()                                               │
+│                 .orElse(null);                                             │
+│                                                                             │
+│             if (selectedAgent == null) {                                   │
+│                 logger.warn("⚠️ No se encontró agente para: {}",          │
+│                     request.getRequestType());                             │
+│                 result.put("status", "NO_HANDLER");                        │
+│                 return result;                                             │
+│             }                                                              │
+│                                                                             │
+│             logger.info("🔀 Enrutando a agente: {}", selectedAgent.getName()); ← ENRUTA
+│                                                                             │
+│             // 🔑 PASO 2: EJECUTAR AGENTE SELECCIONADO                     │
+│             CompletableFuture<Map<String, Object>> agentResult =          │
+│                 selectedAgent.execute(request);  ← DELEGA                  │
+│             Map<String, Object> agentOutput = agentResult.get();           │
+│                                                                             │
+│             // 🔑 PASO 3: CONSOLIDAR RESULTADO                             │
+│             result.put("orchestratorStatus", "SUCCESS");                   │
+│             result.put("selectedAgent", selectedAgent.getName());          │
+│             result.put("agentResult", agentOutput);                        │
+│                                                                             │
+│             logger.info("✅ Orquestación completada por: {}",              │
+│                 selectedAgent.getName());                                  │
+│                                                                             │
+│         } catch (Exception e) {                                            │
+│             logger.error("❌ Error en orquestación", e);                   │
+│             result.put("status", "ERROR");                                 │
+│             result.put("error", e.getMessage());                           │
+│         }                                                                  │
+│                                                                             │
+│         return result;                                                     │
+│     });                                                                    │
+│ }                                                                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+ANÁLISIS LÍNEA A LÍNEA:
+
+1. availableAgents.stream()
+   └─ Recorre lista de agentes: [TestExecution, Planning, Design, Jira, GitHub]
+
+2. .filter(agent -> agent.canHandle(request))
+   └─ PREGUNTA A CADA AGENTE:
+      ├─ TestExecutionHandler.canHandle(request)
+      │  → return "test-execution".equalsIgnoreCase(request.getRequestType());
+      │     Si requestType == "test-execution" → TRUE
+      │
+      ├─ TestPlanningAgent.canHandle(request)
+      │  → return "planning".equalsIgnoreCase(request.getRequestType());
+      │     Si requestType == "planning" → TRUE
+      │
+      ├─ TestDesignerAgent.canHandle(request)
+      │  → return "design".equalsIgnoreCase(request.getRequestType());
+      │     Si requestType == "design" → TRUE
+      │
+      └─ ... y así para cada agente
+
+3. .findFirst()
+   └─ Retorna el PRIMER agente que retornó TRUE de canHandle()
+
+4. selectedAgent.execute(request)
+   └─ Ejecuta el método execute() del agente seleccionado
+      Este método es ESPECIALIZADO para ese tipo de solicitud
+
+
+═══════════════════════════════════════════════════════════════════════════════
+🎯 PARTE 2: LOS AGENTES (Especialistas)
+═══════════════════════════════════════════════════════════════════════════════
+
+INTERFAZ BASE:
+┌────────────────────────────────────────────────────────────────────────────┐
+│ public interface Agent {                                                   │
+│     CompletableFuture<Map<String, Object>> execute(UserRequest request);   │
+│     String getName();                                                      │
+│     String getDescription();                                               │
+│     boolean canHandle(UserRequest request);  ← CLAVE                       │
+│ }                                                                          │
+└────────────────────────────────────────────────────────────────────────────┘
+
+EJEMPLO 1: TestExecutionHandler
+┌────────────────────────────────────────────────────────────────────────────┐
+│ public class TestExecutionHandler implements Agent {                       │
+│                                                                            │
+│     @Override                                                              │
+│     public boolean canHandle(UserRequest request) {                        │
+│         return "test-execution".equalsIgnoreCase(request.getRequestType())│
+│         // ↑ Solo retorna TRUE si requestType es "test-execution"          │
+│     }                                                                      │
+│                                                                            │
+│     @Override                                                              │
+│     public CompletableFuture<Map<String, Object>> execute(                │
+│         UserRequest request) {                                             │
+│                                                                            │
+│         return CompletableFuture.supplyAsync(() -> {                      │
+│             Map<String, Object> result = new HashMap<>();                 │
+│                                                                            │
+│             String profile = (String) request.getParameters()             │
+│                 .getOrDefault("profile", "smoke");                        │
+│             String browser = request.getBrowser() != null ?                │
+│                 request.getBrowser() : "chrome";                          │
+│             String environment = request.getEnvironment() != null ?        │
+│                 request.getEnvironment() : "dev";                         │
+│                                                                            │
+│             // Construir y ejecutar Maven                                  │
+│             String mavenCommand = String.format(                          │
+│                 "mvn clean test -Dprofile=%s -Dbrowser=%s -Denvironment=%s",│
+│                 profile, browser, environment);                           │
+│                                                                            │
+│             result.put("executionId", UUID.randomUUID().toString());      │
+│             result.put("status", "SUCCESS");                              │
+│             result.put("profile", profile);                               │
+│             result.put("totalTests", 45);                                 │
+│             result.put("passedTests", 43);                                │
+│             result.put("failedTests", 2);                                 │
+│                                                                            │
+│             return result;                                                │
+│         });                                                               │
+│     }                                                                      │
+│ }                                                                          │
+└────────────────────────────────────────────────────────────────────────────┘
+
+EJEMPLO 2: TestPlanningAgent
+┌────────────────────────────────────────────────────────────────────────────┐
+│ public class TestPlanningAgent implements Agent {                          │
+│                                                                            │
+│     @Override                                                              │
+│     public boolean canHandle(UserRequest request) {                        │
+│         return "planning".equalsIgnoreCase(request.getRequestType());     │
+│         // ↑ Solo retorna TRUE si requestType es "planning"                │
+│     }                                                                      │
+│                                                                            │
+│     @Override                                                              │
+│     public CompletableFuture<Map<String, Object>> execute(                │
+│         UserRequest request) {                                             │
+│                                                                            │
+│         return CompletableFuture.supplyAsync(() -> {                      │
+│             Map<String, Object> result = new HashMap<>();                 │
+│                                                                            │
+│             String testObjective = (String)                               │
+│                 request.getParameters().get("testObjective");             │
+│             List<String> features = (List<String>)                        │
+│                 request.getParameters().get("features");                  │
+│                                                                            │
+│             // COMPLETAMENTE DIFERENTE: genera plan, no ejecuta Maven    │
+│             Map<String, Object> testPlan = new HashMap<>();               │
+│             testPlan.put("planId", "TP-" + System.nanoTime());           │
+│             testPlan.put("objective", testObjective);                     │
+│             testPlan.put("features", features);                           │
+│             testPlan.put("testCases", generateTestCases(features));      │
+│             testPlan.put("estimatedDuration", "2-3 horas");              │
+│                                                                            │
+│             result.put("status", "SUCCESS");                              │
+│             result.put("testPlan", testPlan);                             │
+│             result.put("testCasesCount", features != null ?               │
+│                 features.size() * 3 : 0);                                │
+│                                                                            │
+│             return result;                                                │
+│         });                                                               │
+│     }                                                                      │
+│ }                                                                          │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+📊 PARTE 3: FLUJO DE EJECUCIÓN COMPLETO
+═══════════════════════════════════════════════════════════════════════════════
+
+ESCENARIO: Usuario ejecuta
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ AutomationOrchestrator orchestrator = new AutomationOrchestrator();        │
+│                                                                             │
+│ UserRequest request = new UserRequest();                                   │
+│ request.setRequestType("test-execution");  ← ¡ESTO ES LA LLAVE!           │
+│ request.setBrowser("chrome");                                              │
+│ request.setEnvironment("staging");                                         │
+│ Map<String, Object> params = new HashMap<>();                              │
+│ params.put("profile", "smoke");                                            │
+│ request.setParameters(params);                                             │
+│                                                                             │
+│ CompletableFuture<Map<String, Object>> result =                            │
+│     orchestrator.processRequest(request);                                  │
+│                                                                             │
+│ Map<String, Object> response = result.get();                               │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+INTERNAMENTE:
+
+PASO 1: orchestrator.processRequest(request) llama a:
+    OrchestratorAgent.execute(request)
+
+PASO 2: OrchestratorAgent.execute() hace:
+    Agent selectedAgent = availableAgents.stream()
+        .filter(agent -> agent.canHandle(request))
+        .findFirst()
+        .orElse(null);
+
+    ITERA:
+    ├─ TestExecutionHandler.canHandle(request)
+    │  → "test-execution".equals("test-execution") ? TRUE ✅ SELECCIONADO
+    │
+    ├─ (resto no se pregunta porque ya encontró)
+
+PASO 3: OrchestratorAgent ejecuta TestExecutionHandler:
+    CompletableFuture<Map<String, Object>> agentResult =
+        TestExecutionHandler.execute(request);
+
+PASO 4: TestExecutionHandler.execute() retorna:
+    {
+      executionId: "uuid-123",
+      status: "SUCCESS",
+      profile: "smoke",
+      browser: "chrome",
+      environment: "staging",
+      totalTests: 45,
+      passedTests: 43,
+      failedTests: 2,
+      reportPath: "/reports/automation-uuid-123.html"
+    }
+
+PASO 5: OrchestratorAgent consolida:
+    {
+      orchestratorStatus: "SUCCESS",
+      selectedAgent: "TestExecutionHandler",
+      agentResult: { ... del paso 4 ... }
+    }
+
+PASO 6: Usuario recibe respuesta final
+
+
+═══════════════════════════════════════════════════════════════════════════════
+🔄 COMPARACIÓN: TRADICIONAL vs ORQUESTACIÓN
+═══════════════════════════════════════════════════════════════════════════════
+
+TRADICIONAL:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ public static void main(String[] args) {                                   │
+│     // Problema: Lógica acoplada directamente                              │
+│     if (tipoSolicitud.equals("test-execution")) {                          │
+│         // Ejecutar Maven directamente aquí                                │
+│     } else if (tipoSolicitud.equals("planning")) {                         │
+│         // Generar plan aquí                                               │
+│     } else if (tipoSolicitud.equals("design")) {                           │
+│         // Diseñar escenarios aquí                                         │
+│     }                                                                      │
+│     // ... cientos de líneas así ...                                       │
+│ }                                                                          │
+│                                                                             │
+│ PROBLEMAS:                                                                 │
+│ ❌ main() es GIGANTE                                                       │
+│ ❌ Acoplamiento fuerte (todo está en un método)                            │
+│ ❌ Agregar nuevo tipo = modificar main()                                   │
+│ ❌ Riesgo de romper existente                                              │
+│ ❌ Muy difícil de testear                                                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+CON AGENTES + ORCHESTRATOR:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ public static void main(String[] args) {                                   │
+│     // Limpio y simple                                                     │
+│     AutomationOrchestrator orchestrator = new AutomationOrchestrator();    │
+│     CompletableFuture<Map<String, Object>> result =                        │
+│         orchestrator.processRequest(userRequest);                          │
+│     Map<String, Object> response = result.get();                           │
+│ }                                                                          │
+│                                                                             │
+│ VENTAJAS:                                                                  │
+│ ✅ main() es SIMPLE y LIMPIO                                               │
+│ ✅ Bajo acoplamiento (cada agente es independiente)                        │
+│ ✅ Agregar nuevo tipo = crear agente + agregar a lista                    │
+│ ✅ No toca código existente                                                │
+│ ✅ Muy fácil de testear (cada agente en aislado)                          │
+│ ✅ Escalable a nuevos requisitos                                           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+✅ CONCLUSIÓN: ARQUITECTURA INTELIGENTE
+═══════════════════════════════════════════════════════════════════════════════
+
+El Orchestrator Agent actúa como un:
+1. ROUTER inteligente (dirige solicitudes al agente correcto)
+2. DISPATCHER (ejecuta el agente seleccionado)
+3. AGGREGATOR (consolida resultados)
+
+TODO BASADO EN EL REQUESTTYPE:
+
+requestType → canHandle() → TRUE/FALSE → Selección automática
+
+Esto es un ejemplo de:
+- Strategy Pattern (cada agente es una estrategia)
+- Router Pattern (enrutamiento inteligente)
+- Dependency Injection (agentes inyectados al constructor)
+
+═══════════════════════════════════════════════════════════════════════════════

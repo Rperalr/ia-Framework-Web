@@ -1,0 +1,306 @@
+# QA Commands Configuration & Reference
+# Este archivo mapea frases naturales a comandos CLI
+# Formato: FRASE_NATURAL => COMANDO_CLI
+
+commands:
+  # ============================================
+  # ANÁLISIS Y PLANIFICACIÓN
+  # ============================================
+  
+  - id: "analyze-user-story"
+    phrases:
+      - "analizar historia de usuario"
+      - "analizar historia de user"
+      - "leer historia"
+      - "entender requisitos"
+      - "analizar us"
+    command: "orchestrator analyze-user-story --file {file} --project {project}"
+    required_params:
+      - file: "Ruta al archivo de historia (ej: US-001.md)"
+    optional_params:
+      - project: "Nombre del proyecto"
+      - output: "Ruta de salida del análisis"
+    example: 'orchestrator analyze-user-story --file "stories/US-001.md" --project "AutomationFramework"'
+    execution_time: "2-3 minutos"
+    agent: "TestPlanningAgent"
+
+  - id: "generate-test-plan"
+    phrases:
+      - "generar plan de pruebas"
+      - "crear plan de testing"
+      - "plan de pruebas completo"
+      - "planificar pruebas"
+    command: "orchestrator generate-test-plan --story {story} --coverage {coverage} --format {format}"
+    required_params:
+      - story: "ID de la historia (ej: US-001)"
+    optional_params:
+      - coverage: "basic | standard | comprehensive (por defecto: standard)"
+      - format: "markdown | excel | json (por defecto: markdown)"
+      - output: "Ruta de salida"
+    example: 'orchestrator generate-test-plan --story "US-001" --coverage "comprehensive" --format "markdown"'
+    execution_time: "3-5 minutos"
+    agent: "TestPlanningAgent"
+
+  - id: "design-scenarios"
+    phrases:
+      - "diseñar escenarios de prueba"
+      - "crear escenarios bdd"
+      - "generar gherkin"
+      - "crear feature files"
+      - "diseñar casos de uso"
+    command: "orchestrator design-scenarios --story {story} --bdd-format {format} --language {language}"
+    required_params:
+      - story: "ID de la historia (ej: US-001)"
+    optional_params:
+      - bdd-format: "gherkin | robot | cucumber (por defecto: gherkin)"
+      - language: "es | en | pt (por defecto: es)"
+      - output: "Ruta de salida"
+    example: 'orchestrator design-scenarios --story "US-001" --bdd-format "gherkin" --language "es"'
+    execution_time: "5-7 minutos"
+    agent: "TestDesignerAgent"
+
+  - id: "read-jira-requirements"
+    phrases:
+      - "leer requisitos de jira"
+      - "obtener criterios de aceptación"
+      - "traer historia de jira"
+      - "importar requisitos"
+      - "leer issue de jira"
+    command: "orchestrator read-jira-requirements --issue {issue} --include-subtasks {subtasks}"
+    required_params:
+      - issue: "ID de la tarea/historia (ej: US-001, QA-100)"
+    optional_params:
+      - include-subtasks: "true | false (por defecto: true)"
+      - output: "Ruta de salida en JSON"
+    example: 'orchestrator read-jira-requirements --issue "US-001" --include-subtasks "true"'
+    execution_time: "1-2 minutos"
+    agent: "JiraTaskAgent"
+
+  # ============================================
+  # DISEÑO Y DESARROLLO
+  # ============================================
+
+  - id: "design-test-scripts"
+    phrases:
+      - "desarrollar test scripts pom"
+      - "crear test scripts"
+      - "generar test cases"
+      - "implementar scripts de prueba"
+      - "crear page objects"
+    command: "orchestrator design-test-scripts --story {story} --language {language} --framework {framework}"
+    required_params:
+      - story: "ID de la historia (ej: US-001)"
+    optional_params:
+      - language: "Java | Python | JavaScript (por defecto: Java)"
+      - framework: "POM | Cucumber | BDD (por defecto: POM)"
+      - output-path: "Directorio de salida"
+    example: 'orchestrator design-test-scripts --story "US-001" --language "Java" --framework "POM"'
+    execution_time: "5-10 minutos"
+    agent: "TestDesignerAgent"
+
+  - id: "generate-locators"
+    phrases:
+      - "crear localizadores pom"
+      - "generar localizadores"
+      - "buscar xpath y css"
+      - "inspeccionar elementos"
+      - "escanear página"
+    command: "orchestrator generate-locators --page {page} --browser {browser} --scan-url {url}"
+    required_params:
+      - page: "Nombre de la página POM (ej: LoginPage)"
+    optional_params:
+      - browser: "chrome | firefox | safari | edge (por defecto: chrome)"
+      - scan-url: "URL para escanear elementos automáticamente"
+      - format: "java | python | json (por defecto: java)"
+    example: 'orchestrator generate-locators --page "LoginPage" --browser "chrome" --scan-url "https://app.example.com/login"'
+    execution_time: "3-5 minutos"
+    agent: "TestDesignerAgent"
+
+  - id: "generate-test-data"
+    phrases:
+      - "generar datos de prueba"
+      - "crear datos de test"
+      - "generar usuarios de prueba"
+      - "crear dataset"
+      - "generar credenciales de prueba"
+    command: "orchestrator generate-test-data --type {type} --count {count} --format {format} --output {output}"
+    required_params:
+      - type: "user-credentials | products | addresses | emails | etc"
+      - output: "Ruta de salida del archivo"
+    optional_params:
+      - count: "Cantidad de registros (por defecto: 10)"
+      - format: "csv | json | excel | xml (por defecto: csv)"
+    example: 'orchestrator generate-test-data --type "user-credentials" --count "50" --format "csv" --output "test-data/users.csv"'
+    execution_time: "2-4 minutos"
+    agent: "TestDesignerAgent"
+
+  # ============================================
+  # EJECUCIÓN DE PRUEBAS
+  # ============================================
+
+  - id: "execute-tests-by-tag"
+    phrases:
+      - "ejecutar pruebas por tag"
+      - "correr smoke tests"
+      - "ejecutar tests críticos"
+      - "correr pruebas de regresión"
+      - "ejecutar pruebas específicas"
+    command: "orchestrator execute-tests --tag {tags} --environment {environment} --browser {browser} --parallel {parallel} --threads {threads}"
+    required_params:
+      - tags: "Tags a ejecutar (ej: @smoke, @login, @critical)"
+    optional_params:
+      - environment: "staging | production | development (por defecto: staging)"
+      - browser: "chrome | firefox | safari | edge (por defecto: chrome)"
+      - parallel: "true | false (por defecto: false)"
+      - threads: "Número de threads paralelos (por defecto: 4)"
+    example: 'orchestrator execute-tests --tag "@smoke,@login" --environment "staging" --browser "chrome" --parallel "true" --threads "4"'
+    execution_time: "Variable (típico: 5-15 minutos)"
+    agent: "TestExecutionHandler"
+
+  - id: "execute-all-tests"
+    phrases:
+      - "ejecutar todas las pruebas"
+      - "correr suite completa"
+      - "ejecutar regresión completa"
+      - "suite de pruebas completa"
+      - "full test run"
+    command: "orchestrator execute-all-tests --environment {environment} --browser {browser} --parallel {parallel} --threads {threads}"
+    required_params: []
+    optional_params:
+      - environment: "staging | production | development (por defecto: staging)"
+      - browser: "chrome | firefox | safari | edge (por defecto: chrome)"
+      - parallel: "true | false (por defecto: true)"
+      - threads: "Número de threads (por defecto: 4)"
+    example: 'orchestrator execute-all-tests --environment "staging" --browser "chrome" --parallel "true" --threads "8"'
+    execution_time: "Variable (típico: 30-60 minutos)"
+    agent: "TestExecutionHandler"
+
+  # ============================================
+  # INSPECCIÓN Y DEBUG
+  # ============================================
+
+  - id: "inspect-element"
+    phrases:
+      - "inspeccionar elemento"
+      - "analizar elemento en pantalla"
+      - "obtener propiedades del elemento"
+      - "buscar selector"
+      - "obtener xpath"
+    command: "orchestrator inspect-element --selector {selector} --browser {browser} --url {url}"
+    required_params:
+      - selector: "CSS selector o XPath del elemento"
+      - url: "URL de la página"
+    optional_params:
+      - browser: "chrome | firefox | safari (por defecto: chrome)"
+    example: 'orchestrator inspect-element --selector "button.login" --browser "chrome" --url "https://app.example.com/login"'
+    execution_time: "1-2 minutos"
+    agent: "TestExecutionHandler"
+
+  - id: "capture-screenshot"
+    phrases:
+      - "capturar screenshot"
+      - "tomar captura de pantalla"
+      - "guardar imagen"
+      - "capturar pantalla"
+      - "tomar foto"
+    command: "orchestrator capture-screenshot --browser {browser} --url {url} --output {output} --full-page {fullpage}"
+    required_params:
+      - browser: "chrome | firefox | safari | edge"
+      - url: "URL a capturar"
+    optional_params:
+      - output: "Ruta de salida (por defecto: screenshot-{timestamp}.png)"
+      - full-page: "true | false (por defecto: false)"
+    example: 'orchestrator capture-screenshot --browser "chrome" --url "https://app.example.com/dashboard" --output "screenshot.png" --full-page "true"'
+    execution_time: "1 minuto"
+    agent: "TestExecutionHandler"
+
+  - id: "get-latest-report"
+    phrases:
+      - "obtener reporte de pruebas"
+      - "descargar resultados"
+      - "generar reporte"
+      - "últimos resultados"
+      - "ver reporte"
+    command: "orchestrator get-latest-report --format {format} --output {output} --include-logs {logs}"
+    required_params:
+      - output: "Directorio de salida"
+    optional_params:
+      - format: "html | json | xml | pdf (por defecto: html)"
+      - include-logs: "true | false (por defecto: true)"
+    example: 'orchestrator get-latest-report --format "html" --output "target/reports/" --include-logs "true"'
+    execution_time: "1-2 minutos"
+    agent: "TestExecutionHandler"
+
+  # ============================================
+  # INTEGRACIÓN Y REPORTE
+  # ============================================
+
+  - id: "trigger-pipeline"
+    phrases:
+      - "disparar pipeline github"
+      - "ejecutar workflow"
+      - "lanzar pipeline"
+      - "correr acciones"
+      - "trigger ci/cd"
+    command: "orchestrator trigger-pipeline --workflow {workflow} --branch {branch} --environment {environment} --wait {wait}"
+    required_params:
+      - workflow: "Nombre del workflow (ej: test-automation)"
+      - branch: "Rama a ejecutar (ej: main, develop)"
+    optional_params:
+      - environment: "staging | production (por defecto: staging)"
+      - wait: "true | false - esperar a que termine (por defecto: false)"
+      - timeout: "Segundos para timeout (por defecto: 1800)"
+    example: 'orchestrator trigger-pipeline --workflow "test-automation" --branch "main" --environment "staging" --wait "true"'
+    execution_time: "5-15 minutos"
+    agent: "GitHubActionsAgent"
+
+  - id: "create-jira-evidence"
+    phrases:
+      - "crear evidencia en jira"
+      - "publicar resultados en jira"
+      - "reportar pruebas"
+      - "evidencia de ejecución"
+      - "subir resultados a jira"
+    command: "orchestrator create-jira-evidence --issue {issue} --report {report} --status {status} --attachments {attachments}"
+    required_params:
+      - issue: "ID de la tarea Jira (ej: QA-001)"
+      - report: "Ruta al archivo de resultados"
+      - status: "PASSED | FAILED | SKIPPED"
+    optional_params:
+      - attachments: "Rutas a screenshots/logs (separadas por coma)"
+      - comment: "Comentario adicional"
+    example: 'orchestrator create-jira-evidence --issue "QA-001" --report "test-results.json" --status "PASSED" --attachments "screenshot.png,test.log"'
+    execution_time: "2-3 minutos"
+    agent: "JiraTaskAgent"
+
+# ============================================
+# METADATA
+# ============================================
+
+metadata:
+  version: "1.0"
+  last_updated: "2026-07-31"
+  supported_environments:
+    - staging
+    - production
+    - development
+  supported_browsers:
+    - chrome
+    - firefox
+    - safari
+    - edge
+  supported_languages:
+    - Java
+    - Python
+    - JavaScript
+  supported_frameworks:
+    - POM
+    - Cucumber
+    - BDD
+  supported_formats:
+    - json
+    - csv
+    - html
+    - xml
+    - excel
+    - markdown

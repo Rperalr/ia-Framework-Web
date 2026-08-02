@@ -1,0 +1,54 @@
+# Configuración del Módulo de Orquestación
+
+## Agentes Disponibles
+
+agentes:
+  - nombre: TestExecutionHandler
+    tipo: test-execution
+    descripcion: Ejecuta pruebas automatizadas con Maven
+    timeout: 3600000
+    
+  - nombre: TestPlanningAgent
+    tipo: planning
+    descripcion: Genera plan de pruebas
+    timeout: 300000
+    
+  - nombre: TestDesignerAgent
+    tipo: design
+    descripcion: Diseña escenarios y casos de prueba
+    timeout: 300000
+    
+  - nombre: JiraTaskAgent
+    tipo: jira
+    descripcion: Integración con Jira
+    timeout: 60000
+    
+  - nombre: GitHubActionsAgent
+    tipo: github
+    descripcion: Integración con GitHub Actions
+    timeout: 120000
+
+## Entornos Soportados
+entornos:
+  - dev
+  - staging
+  - prod
+
+## Navegadores Soportados
+navegadores:
+  - chrome
+  - firefox
+  - edge
+  - safari
+
+## Perfiles de Prueba
+perfiles:
+  - smoke
+  - regression
+  - full
+
+## Configuración de MCP
+mcp:
+  max_concurrent_tools: 5
+  tool_timeout_seconds: 300
+  log_level: INFO

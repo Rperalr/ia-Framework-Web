@@ -1,0 +1,23 @@
+name: Publish Automation AI
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+          cache: maven
+      - name: Build and publish
+        env:
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+          MAVEN_REPOSITORY_URL: ${{ secrets.MAVEN_REPOSITORY_URL }}
+          MAVEN_RELEASES_URL: ${{ secrets.MAVEN_RELEASES_URL }}
+          MAVEN_SNAPSHOTS_URL: ${{ secrets.MAVEN_SNAPSHOTS_URL }}
+        run: mvn --settings settings.xml.example clean deploy
