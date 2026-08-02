@@ -65,15 +65,10 @@
 
     <distributionManagement>
         <repository>
-            <id>enterprise-maven-releases</id>
-            <name>Enterprise Maven Releases</name>
-            <url>${env.MAVEN_RELEASES_URL}</url>
+            <id>github</id>
+            <name>GitHub Packages - Automation AI</name>
+            <url>${env.MAVEN_AI_REPOSITORY_URL}</url>
         </repository>
-        <snapshotRepository>
-            <id>enterprise-maven-snapshots</id>
-            <name>Enterprise Maven Snapshots</name>
-            <url>${env.MAVEN_SNAPSHOTS_URL}</url>
-        </snapshotRepository>
     </distributionManagement>
 
 </project>
